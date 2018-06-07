@@ -8,8 +8,9 @@ libfit = C.CDLL("./libnlopt.so.0.9.0")
 # We'll optimize Himmelblau's function
 
 def opt_me(x, grad):
+    if grad.size > 0:
+       grad[:] = 0
     a, b = x[0], x[1]
-    #return C.c_double((a**2 + b - 11)**2 + (a + b**2 - 7)**2) 
     return (a**2 + b - 11)**2 + (a + b**2 - 7)**2
 
 # Optimization stage
@@ -45,12 +46,7 @@ libfit.nlopt_set_lower_bounds.argtypes = [C.c_void_p ,
 libfit.nlopt_set_upper_bounds.argtypes = [C.c_void_p ,
        np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS")]
 
-libfit.nlopt_set_min_objective.argtypes = [C.c_void_p, C.c_void_p, C.c_void_p ]
-libfit.nlopt_set_maxeval.argtypes = [C.c_void_p, C.c_int]
-libfit.nlopt_set_stopval.argtypes = [C.c_void_p, C.c_double]
-libfit.nlopt_set_ftol_abs.argtypes = [C.c_void_p, C.c_double]
 libfit.nlopt_optimize.argtypes = [C.c_void_p, np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS")]
-libfit.nlopt_optimize.restypes = [np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS"), C.c_double]
 
 opt = libfit.nlopt_create('NLOPT_G_MLSL_LDS', 2)
 libfit.nlopt_set_local_optimizer(opt, libfit.nlopt_create('NLOPT_LN_BOBYQA', 2))
@@ -60,7 +56,8 @@ libfit.nlopt_set_min_objective(opt, cmp_opt_me, None)
 libfit.nlopt_set_maxeval(opt, maxeval)
 libfit.nlopt_set_stopval(opt, minrms)
 libfit.nlopt_set_ftol_abs(opt, tol)
-libfit.nlopt_optimize(opt, param_values, minf)
+x = libfit.nlopt_optimize(opt, param_values)
+libfit.nlopt_destroy(opt)
 
 #with open('out', 'w') as outfile:
 #     outfile.write("optimum at " + str(x[0]) + " " + str(x[1]) + "\n")
