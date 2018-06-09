@@ -20,23 +20,18 @@ typedef struct {
 	nlopt_opt opt;
 } Nlopt;
 
-
+// Function that executes the callback
 double exec_callback(unsigned n, const double *x,
                      double *grad, void *func_data)
 {
-	printf("%s:%d\n", __FILE__, __LINE__);
-	npy_intp dims[1];
-	dims[0] = 2;
-	printf("%s:%d\n", __FILE__, __LINE__);
-	double *lgrad = calloc(2, sizeof(double));
-	printf("%s:%d\n", __FILE__, __LINE__);
-	PyObject *Ograd = PyArray_New(&PyArray_Type, 1, dims, NPY_FLOAT, NULL, \
-	                              lgrad, 0, NPY_ARRAY_CARRAY, NULL);
+	npy_intp dims[] = {n};
 
-	//PyObject *Ograd = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, lgrad);
-	printf("%s:%d\n", __FILE__, __LINE__);
 	PyObject *Ox = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, (void *) x);
-	printf("%s:%d\n", __FILE__, __LINE__);
+	PyObject *Ograd = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, grad);
+
+	if (!Ox || !Ograd)
+		abort();
+
 	PyObject *arglist = Py_BuildValue("OO", Ox, Ograd);
 
 	PyObject *result = PyEval_CallObject(callback, arglist);
@@ -45,10 +40,12 @@ double exec_callback(unsigned n, const double *x,
 	Py_DECREF(Ograd);
     Py_DECREF(Ox);
 
-    return PyFloat_AsDouble(result);
+    const double ret = PyFloat_AsDouble(result);
+
+    return ret;
 }
 
-
+// This sets the global callback object.
 static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *args)
 {
 	PyObject *result = NULL, *temp = NULL;
@@ -74,7 +71,7 @@ static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *args)
     return result;
 }
 
-
+// Object allocation in memory (no initialize)
 static PyObject *Nlopt_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
 	Nlopt *self = (Nlopt *) type->tp_alloc(type, 0);
@@ -84,6 +81,7 @@ static PyObject *Nlopt_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *) self;
 }
 
+// Object initialization. (this receives parameters)
 static int Nlopt_init(Nlopt *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"algorithm", "n", NULL};
@@ -103,14 +101,14 @@ static int Nlopt_init(Nlopt *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
-
+// Destructor
 static void Nlopt_dealloc(Nlopt *self)
 {
 	nlopt_destroy(self->opt);
 	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-
+// Here start the Wrappers.
 static PyObject *Nlopt_set_lower_bounds(Nlopt *self, PyObject *args)
 {
 	PyObject *ptr;
@@ -220,18 +218,16 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args)
 	return Py_BuildValue("i", out);
 }
 
-//NLOPT_EXTERN(nlopt_result) nlopt_set_min_objective(nlopt_opt opt,
-//                                                   nlopt_func f,
-//                                                   void *f_data);
+// ====== Defining the type. This parte exposes the object to python =======
 
-// Defining the type
-
+// Object Members
 static PyMemberDef Nlopt_members[] = {
 	{"algorithm",  T_INT, offsetof(Nlopt, algorithm), 0, "The number of the algorithm."},
 	{"n",  T_UINT, offsetof(Nlopt, n), 0, "The number n."},
 	{NULL}
 };
 
+// Object functions
 static PyMethodDef Nlopt_methods[] = {
 	{"set_lower_bounds", (PyCFunction) Nlopt_set_lower_bounds,
 	 METH_VARARGS, "Set lower bounds."},
@@ -250,6 +246,8 @@ static PyMethodDef Nlopt_methods[] = {
     {NULL}
 };
 
+// This is the python object design to put all together.
+// The PyObjectType  it an object itself
 static PyTypeObject PyNloptType = {
 	PyObject_HEAD_INIT(NULL)
     .tp_name = "PyNlopt",
@@ -264,7 +262,6 @@ static PyTypeObject PyNloptType = {
 };
 
 // Defining the module
-
 static PyModuleDef nloptmodule = {
 	PyModuleDef_HEAD_INIT,
     .m_name = "wnlopt",
@@ -274,14 +271,20 @@ static PyModuleDef nloptmodule = {
 
 PyMODINIT_FUNC PyInit_wnlopt(void)
 {
+	// Tests the object type 
     if (PyType_Ready(&PyNloptType) < 0)
         return NULL;
 
+    // Creates the module object
     PyObject *m = PyModule_Create(&nloptmodule);
     if (!m)
 	    return NULL;
 
+    import_array();             // needed to use numpy
+
     Py_INCREF(&PyNloptType);
+
+    // Add the python object to this module.
 	PyModule_AddObject(m, "PyNlopt" , (PyObject* )&PyNloptType);
 
     return m;
