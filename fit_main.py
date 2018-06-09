@@ -20,7 +20,7 @@ param_values = np.array([0, 0], dtype=np.float64)
 minf = np.array([], dtype=np.float64)
 
 ################################################################
-# NLopt SWIG-python wrapper
+# NLopt SWIG-Python wrapper
 ################################################################
 
 #opt = nlopt.opt(nlopt.G_MLSL_LDS, 2)
@@ -40,13 +40,16 @@ minf = np.array([], dtype=np.float64)
 
 # Objective function ported to C 
 
-CMPFUNC = C.CFUNCTYPE(C.c_double, np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS"), C.c_void_p)
+CMPFUNC = C.CFUNCTYPE(C.c_double, np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS"), 
+                      C.c_double)
 cmp_opt_me = CMPFUNC(opt_me)
 
 # Fucntion prototyping
 
 libfit.nlopt_create.argtypes = [C.c_int, C.c_int]
 libfit.nlopt_create.restype = C.c_void_p
+
+libfit.nlopt_destroy.argtypes = [C.c_void_p]
 
 libfit.nlopt_set_lower_bounds.argtypes = [C.c_void_p ,
        np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS")]
@@ -77,5 +80,4 @@ libfit.nlopt_destroy(opt)
 #with open('out', 'w') as outfile:
 #     outfile.write("optimum at " + str(x[0]) + " " + str(x[1]) + "\n")
 #     outfile.write("minimum value = " + str(minf))
-
 
