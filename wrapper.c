@@ -7,13 +7,73 @@
 
 #include "nlopt.h"
 
+// The callback will be in a global variable
+// This can be improved
+static PyObject *callback;
+
+
 // CountDict type
 typedef struct {
     PyObject_HEAD
 	int algorithm;
 	unsigned n;
-    nlopt_opt opt;
+	nlopt_opt opt;
 } Nlopt;
+
+
+double exec_callback(unsigned n, const double *x,
+                     double *grad, void *func_data)
+{
+	printf("%s:%d\n", __FILE__, __LINE__);
+	npy_intp dims[1];
+	dims[0] = 2;
+	printf("%s:%d\n", __FILE__, __LINE__);
+	double *lgrad = calloc(2, sizeof(double));
+	printf("%s:%d\n", __FILE__, __LINE__);
+	PyObject *Ograd = PyArray_New(&PyArray_Type, 1, dims, NPY_FLOAT, NULL, \
+	                              lgrad, 0, NPY_ARRAY_CARRAY, NULL);
+
+	//PyObject *Ograd = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, lgrad);
+	printf("%s:%d\n", __FILE__, __LINE__);
+	PyObject *Ox = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, (void *) x);
+	printf("%s:%d\n", __FILE__, __LINE__);
+	PyObject *arglist = Py_BuildValue("OO", Ox, Ograd);
+
+	PyObject *result = PyEval_CallObject(callback, arglist);
+
+	Py_DECREF(arglist);
+	Py_DECREF(Ograd);
+    Py_DECREF(Ox);
+
+    return PyFloat_AsDouble(result);
+}
+
+
+static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *args)
+{
+	PyObject *result = NULL, *temp = NULL;
+	nlopt_result out;
+
+	if (PyArg_ParseTuple(args, "O:set_callback", &temp)) {
+        if (!PyCallable_Check(temp)) {
+            PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+            return NULL;
+        }
+        Py_XINCREF(temp);         /* Add a reference to new callback */
+        Py_XDECREF(callback);  /* Dispose of previous callback */
+        callback = temp;       /* Remember new callback */
+        /* Boilerplate to return "None" */
+        Py_INCREF(Py_None);
+        result = Py_None;
+
+        out = nlopt_set_min_objective(self->opt, exec_callback, NULL);
+
+        if (out != NLOPT_SUCCESS)
+	        return NULL;
+	}
+    return result;
+}
+
 
 static PyObject *Nlopt_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -185,6 +245,8 @@ static PyMethodDef Nlopt_methods[] = {
 	 METH_VARARGS, "Set ftol abs."},
 	{"optimize", (PyCFunction) Nlopt_optimize,
 	 METH_VARARGS, "Execute Optimization."},
+	{"set_callback", (PyCFunction) Nlopt_set_callback,
+	 METH_VARARGS, "Sets the callback for the min_objective."},
     {NULL}
 };
 

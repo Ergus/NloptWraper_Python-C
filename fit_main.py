@@ -8,10 +8,6 @@ def opt_me(x, grad):
     a, b = x[0], x[1]
     return (a**2 + b - 11)**2 + (a + b**2 - 7)**2
 
-# Objective function ported to C
-#CMPFUNC = C.CFUNCTYPE(C.c_double, np.ctypeslib.ndpointer(C.c_double, flags="C_CONTIGUOUS"), C.c_void_p)
-#cmp_opt_me = CMPFUNC(opt_me)
-
 # Set variables
 maxeval = 100
 minrms = 0.01
@@ -42,9 +38,9 @@ minf = np.array([], dtype=np.float64)
 opt = wnlopt.PyNlopt(27, 2)
 opt.set_lower_bounds(np.array([-5, -5], dtype=np.float64))
 opt.set_upper_bounds(np.array([5, 5], dtype=np.float64))
-#opt.set_min_objective(cmp_opt_me, None)
+opt.set_callback(opt_me)
 opt.set_maxeval(maxeval)
 opt.set_stopval(minrms)
 opt.set_ftol_abs(tol)
-#opt.optimize(param_values, minf)
+opt.optimize(param_values, minf)
 
