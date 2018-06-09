@@ -20,56 +20,21 @@ typedef struct {
 	nlopt_opt opt;
 } Nlopt;
 
-// Function that executes the callback
-double exec_callback(unsigned n, const double *x,
-                     double *grad, void *func_data)
+// Exception handling
+static PyObject *_checkNlopt(int out, const char file[],
+                             int line, const char function[])
 {
-	npy_intp dims[] = {n};
-
-	PyObject *Ox = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, (void *) x);
-	PyObject *Ograd = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, grad);
-
-	if (!Ox || !Ograd)
-		abort();
-
-	PyObject *arglist = Py_BuildValue("OO", Ox, Ograd);
-
-	PyObject *result = PyEval_CallObject(callback, arglist);
-
-	Py_DECREF(arglist);
-	Py_DECREF(Ograd);
-    Py_DECREF(Ox);
-
-    const double ret = PyFloat_AsDouble(result);
-
-    return ret;
-}
-
-// This sets the global callback object.
-static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *args)
-{
-	PyObject *result = NULL, *temp = NULL;
-	nlopt_result out;
-
-	if (PyArg_ParseTuple(args, "O:set_callback", &temp)) {
-        if (!PyCallable_Check(temp)) {
-            PyErr_SetString(PyExc_TypeError, "parameter must be callable");
-            return NULL;
-        }
-        Py_XINCREF(temp);         /* Add a reference to new callback */
-        Py_XDECREF(callback);  /* Dispose of previous callback */
-        callback = temp;       /* Remember new callback */
-        /* Boilerplate to return "None" */
-        Py_INCREF(Py_None);
-        result = Py_None;
-
-        out = nlopt_set_min_objective(self->opt, exec_callback, NULL);
-
-        if (out != NLOPT_SUCCESS)
-	        return NULL;
+	if (out != NLOPT_SUCCESS) {
+		PyErr_Format(PyExc_RuntimeError,
+		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
+		             file, line, function, out, NLOPT_SUCCESS);
+		return NULL;
 	}
-    return result;
+	return Py_BuildValue("i", out);
 }
+
+#define checkNlopt(out) _checkNlopt(out, __FILE__, __LINE__, __FUNCTION__);
+
 
 // Object allocation in memory (no initialize)
 static PyObject *Nlopt_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -86,7 +51,7 @@ static int Nlopt_init(Nlopt *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"algorithm", "n", NULL};
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwds, "iI", kwlist,
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "iI:nlopt_init", kwlist,
 	                                 &self->algorithm, &self->n))
 		return -1;
 
@@ -109,100 +74,121 @@ static void Nlopt_dealloc(Nlopt *self)
 }
 
 // Here start the Wrappers.
-static PyObject *Nlopt_set_lower_bounds(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_set_lower_bounds(Nlopt *self, PyObject *arg)
 {
-	PyObject *ptr;
-
-	if (!PyArg_ParseTuple(args, "O", &ptr))
+	#ifndef NDEBUG
+	if (!PyArray_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> variable not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
+	#endif
 
-	PyArrayObject *array = (PyArrayObject *) ptr;
+	PyArrayObject *array = (PyArrayObject *) arg;
+	if (!array) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> Is not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
+		return NULL;
+	}
 
 	const double *data = (double *) PyArray_DATA(array);
 
 	nlopt_result out = nlopt_set_lower_bounds(self->opt, data);
-
-	if (out != NLOPT_SUCCESS)
-		return NULL;
-
-	return Py_BuildValue("i", out);
+	return checkNlopt(out);
 }
 
 
-static PyObject *Nlopt_set_upper_bounds(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_set_upper_bounds(Nlopt *self, PyObject *arg)
 {
-	PyObject *ptr;
-
-	if (!PyArg_ParseTuple(args, "O", &ptr))
+	#ifndef NDEBUG
+	if (!PyArray_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> variable not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
+	#endif
 
-	PyArrayObject *array = (PyArrayObject *) ptr;
+	PyArrayObject *array = (PyArrayObject *) arg;
+	if (!array) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> Is not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
+		return NULL;
+	}
 
 	const double *data = (double *) PyArray_DATA(array);
 
 	nlopt_result out = nlopt_set_upper_bounds(self->opt, data);
-
-	if (out != NLOPT_SUCCESS)
-		return NULL;
-
-	return Py_BuildValue("i", out);
+	return checkNlopt(out);
 }
 
 
-static PyObject *Nlopt_set_maxeval(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_set_maxeval(Nlopt *self, PyObject *arg)
 {
-	int maxeval;
-
-	if (!PyArg_ParseTuple(args, "i", &maxeval))
+	#ifndef NDEBUG
+	if (!PyLong_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> arg not an int",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
+	#endif
+
+	int maxeval = PyLong_AsLong(arg);
 
 	nlopt_result out = nlopt_set_maxeval(self->opt, maxeval);
-
-	if (out != NLOPT_SUCCESS)
-		return NULL;
-
-	return Py_BuildValue("i", out);
+	return checkNlopt(out);
 }
 
 
-static PyObject *Nlopt_set_stopval(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_set_stopval(Nlopt *self, PyObject *arg)
 {
-	double stopval;
-
-	if (!PyArg_ParseTuple(args, "d", &stopval))
+	#ifndef NDEBUG
+	if (!PyFloat_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> arg not a float",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
+	#endif
+
+	double stopval = PyFloat_AsDouble(arg);
 
 	nlopt_result out = nlopt_set_stopval(self->opt, stopval);
-
-	if (out != NLOPT_SUCCESS)
-		return NULL;
-
-	return Py_BuildValue("i", out);
+	return checkNlopt(out);
 }
 
 
-static PyObject *Nlopt_set_ftol_abs(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_set_ftol_abs(Nlopt *self, PyObject *arg)
 {
-	double tol;
-
-	if (!PyArg_ParseTuple(args, "d", &tol))
+	#ifndef NDEBUG
+	if (!PyFloat_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> arg not a float",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
+	#endif
+
+	double tol = PyFloat_AsDouble(arg);
 
 	nlopt_result out = nlopt_set_ftol_abs(self->opt, tol);
-
-	if (out != NLOPT_SUCCESS)
-		return NULL;
-
-	return Py_BuildValue("i", out);
+	return checkNlopt(out);
 }
 
 
-static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args)
+static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 {
 	PyObject *Px, *Popt_f;
+	char *kwlist[] = {"x", "optf", NULL};
 
-	if (!PyArg_ParseTuple(args, "OO", &Px, &Popt_f))
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist,
+	                                 &Px, &Popt_f))
 		return NULL;
+
+	#ifndef NDEBUG
+	if (!PyArray_Check(Px) || !PyArray_Check(Popt_f)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> variable not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
+		return NULL;
+	}
+	#endif
 
 	PyArrayObject *x = (PyArrayObject *) Px;
 	PyArrayObject *opt_f = (PyArrayObject *) Popt_f;
@@ -211,11 +197,80 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args)
 	double *dopt_f = (double *) PyArray_DATA(opt_f);
 
 	nlopt_result out = nlopt_optimize(self->opt, dx, dopt_f);
+	return checkNlopt(out);
+}
 
-	if (out != NLOPT_SUCCESS)
+// Functions for the callback
+double exec_callback(unsigned n, const double *x,
+                     double *grad, void *func_data)
+{
+	npy_intp dims[] = {n};
+
+	PyObject *Ox = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, (void *) x);
+	PyObject *Ograd = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, grad);
+
+	if (!Ox || !Ograd) {
+		PyErr_Format(PyExc_RuntimeError,
+		             "%s:%d %s -> could not make PyArray from C array\n",
+		             __FILE__, __LINE__, __FUNCTION__);
+		abort();
+	}
+
+	PyObject *arglist = Py_BuildValue("OO", Ox, Ograd);
+	if (!arglist) {
+		PyErr_Format(PyExc_RuntimeError, "%s:%d %s -> arglist is null\n",
+		             __FILE__, __LINE__, __FUNCTION__);
+		Py_DECREF(Ograd);
+		Py_DECREF(Ox);
+		abort();
+	}
+
+	PyObject *result = PyEval_CallObject(callback, arglist);
+	if (!result) {
+		PyErr_Format(PyExc_RuntimeError, "%s:%d %s -> result is null\n",
+		             __FILE__, __LINE__, __FUNCTION__);
+		Py_DECREF(arglist);
+		Py_DECREF(Ograd);
+		Py_DECREF(Ox);
+		abort();
+	}
+
+	Py_DECREF(arglist);
+	Py_DECREF(Ograd);
+    Py_DECREF(Ox);
+
+    return PyFloat_AsDouble(result);;
+}
+
+// This sets the global callback object.
+static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *arg)
+{
+	PyObject *result = NULL;
+
+	if (!PyCallable_Check(arg)) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> Needed callable parameter",
+		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
+	}
 
-	return Py_BuildValue("i", out);
+	Py_XINCREF(arg);          // Add a reference to new callback
+	Py_XDECREF(callback);     // Dispose of previous callback
+	callback = arg;          // Remember new callback
+
+	// Boilerplate to return "None"
+	Py_INCREF(Py_None);
+	result = Py_None;
+
+	nlopt_result out = nlopt_set_min_objective(self->opt, exec_callback, NULL);
+
+	if (out != NLOPT_SUCCESS) {
+		PyErr_Format(PyExc_RuntimeError,
+		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
+		             __FILE__, __LINE__, __FUNCTION__, out, NLOPT_SUCCESS);
+		return NULL;
+	}
+
+    return result;
 }
 
 // ====== Defining the type. This parte exposes the object to python =======
@@ -230,19 +285,19 @@ static PyMemberDef Nlopt_members[] = {
 // Object functions
 static PyMethodDef Nlopt_methods[] = {
 	{"set_lower_bounds", (PyCFunction) Nlopt_set_lower_bounds,
-	 METH_VARARGS, "Set lower bounds."},
+	 METH_O, "Set lower bounds."},
 	{"set_upper_bounds", (PyCFunction) Nlopt_set_upper_bounds,
-	 METH_VARARGS, "Set upper bounds."},
+	 METH_O, "Set upper bounds."},
 	{"set_maxeval", (PyCFunction) Nlopt_set_maxeval,
-	 METH_VARARGS, "Set maxeval."},
+	 METH_O, "Set maxeval."},
 	{"set_stopval", (PyCFunction) Nlopt_set_stopval,
-	 METH_VARARGS, "Set stopval."},
+	 METH_O, "Set stopval."},
 	{"set_ftol_abs", (PyCFunction) Nlopt_set_ftol_abs,
-	 METH_VARARGS, "Set ftol abs."},
+	 METH_O, "Set ftol abs."},
 	{"optimize", (PyCFunction) Nlopt_optimize,
-	 METH_VARARGS, "Execute Optimization."},
+	 METH_KEYWORDS | METH_VARARGS, "Execute Optimization."},
 	{"set_callback", (PyCFunction) Nlopt_set_callback,
-	 METH_VARARGS, "Sets the callback for the min_objective."},
+	 METH_O, "Sets the callback for the min_objective."},
     {NULL}
 };
 
@@ -271,6 +326,10 @@ static PyModuleDef nloptmodule = {
 
 PyMODINIT_FUNC PyInit_wnlopt(void)
 {
+	#ifndef NDEBUG
+	fprintf(stderr, "PYNLOPT using debug mode\n");
+	#endif
+
 	// Tests the object type 
     if (PyType_Ready(&PyNloptType) < 0)
         return NULL;

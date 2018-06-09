@@ -3,6 +3,10 @@ cmake_minimum_required (VERSION 2.8.11)
 
 project(test_nlopt)
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # NLOPT options
