@@ -26,8 +26,8 @@ int main() {
 	double param_values[] = {0., 0.};
 	double minf;
 
-	//nlopt_opt opt = nlopt_create(NLOPT_G_MLSL_LDS, 2);
-	nlopt_opt opt = nlopt_create(29, 2);
+	//nlopt_opt opt = nlopt_create(27, 2);
+	nlopt_opt opt = nlopt_create(NLOPT_G_MLSL_LDS, 2);
 	nlopt_set_local_optimizer(opt, nlopt_create(NLOPT_LN_BOBYQA, 2));
 
 	nlopt_set_lower_bounds(opt, lower);
@@ -38,11 +38,16 @@ int main() {
 	nlopt_set_stopval(opt, minrms);
 	nlopt_set_ftol_abs(opt, tol);
 
-	if (nlopt_optimize(opt, param_values, &minf) < 0)
-		printf("NLopt failed!\n");
-	else
-		printf("Found minimum at f(%g,%g) = %0.10g\n",
+	int dbg = nlopt_optimize(opt, param_values, &minf);
+
+	if (dbg < 0) {
+		fprintf(stderr, "%s:%d %s -> Nlopt C function failed: %d expected: %d\n",
+		        __FILE__, __LINE__, __FUNCTION__, dbg, NLOPT_SUCCESS);
+	} else {
+		printf("found minimum at f(%g,%g) = %0.10g\n",
 		       param_values[0], param_values[1], minf);
+	}
+
 
 	nlopt_destroy(opt);
 
