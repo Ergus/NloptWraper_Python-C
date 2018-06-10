@@ -20,6 +20,7 @@ typedef struct {
 	nlopt_opt opt;
 } Nlopt;
 
+
 // Exception handling
 static PyObject *_checkNlopt(int out, const char file[],
                              int line, const char function[])
@@ -92,8 +93,7 @@ static PyObject *Nlopt_set_lower_bounds(Nlopt *self, PyObject *arg)
 	}
 
 	const double *data = (double *) PyArray_DATA(array);
-
-	nlopt_result out = nlopt_set_lower_bounds(self->opt, data);
+	const nlopt_result out = nlopt_set_lower_bounds(self->opt, data);
 	return checkNlopt(out);
 }
 
@@ -109,15 +109,9 @@ static PyObject *Nlopt_set_upper_bounds(Nlopt *self, PyObject *arg)
 	#endif
 
 	PyArrayObject *array = (PyArrayObject *) arg;
-	if (!array) {
-		PyErr_Format(PyExc_TypeError, "%s:%d %s -> Is not an array",
-		             __FILE__, __LINE__, __FUNCTION__);
-		return NULL;
-	}
 
 	const double *data = (double *) PyArray_DATA(array);
-
-	nlopt_result out = nlopt_set_upper_bounds(self->opt, data);
+	const nlopt_result out = nlopt_set_upper_bounds(self->opt, data);
 	return checkNlopt(out);
 }
 
@@ -132,9 +126,8 @@ static PyObject *Nlopt_set_maxeval(Nlopt *self, PyObject *arg)
 	}
 	#endif
 
-	int maxeval = PyLong_AsLong(arg);
-
-	nlopt_result out = nlopt_set_maxeval(self->opt, maxeval);
+	const int maxeval = PyLong_AsLong(arg);
+	const nlopt_result out = nlopt_set_maxeval(self->opt, maxeval);
 	return checkNlopt(out);
 }
 
@@ -149,9 +142,8 @@ static PyObject *Nlopt_set_stopval(Nlopt *self, PyObject *arg)
 	}
 	#endif
 
-	double stopval = PyFloat_AsDouble(arg);
-
-	nlopt_result out = nlopt_set_stopval(self->opt, stopval);
+	const double stopval = PyFloat_AsDouble(arg);
+	const nlopt_result out = nlopt_set_stopval(self->opt, stopval);
 	return checkNlopt(out);
 }
 
@@ -166,24 +158,24 @@ static PyObject *Nlopt_set_ftol_abs(Nlopt *self, PyObject *arg)
 	}
 	#endif
 
-	double tol = PyFloat_AsDouble(arg);
-
-	nlopt_result out = nlopt_set_ftol_abs(self->opt, tol);
+	const double tol = PyFloat_AsDouble(arg);
+	const nlopt_result out = nlopt_set_ftol_abs(self->opt, tol);
 	return checkNlopt(out);
 }
 
 
 static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 {
-	PyObject *Px, *Popt_f;
-	char *kwlist[] = {"x", "optf", NULL};
+	PyObject *Px;
+	double opt_f;
+	char *kwlist[] = {"x", "opt_f", NULL};
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist,
-	                                 &Px, &Popt_f))
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "Of", kwlist,
+	                                 &Px, &opt_f))
 		return NULL;
 
 	#ifndef NDEBUG
-	if (!PyArray_Check(Px) || !PyArray_Check(Popt_f)) {
+	if (!PyArray_Check(Px)) {
 		PyErr_Format(PyExc_TypeError, "%s:%d %s -> variable not an array",
 		             __FILE__, __LINE__, __FUNCTION__);
 		return NULL;
@@ -191,13 +183,18 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 	#endif
 
 	PyArrayObject *x = (PyArrayObject *) Px;
-	PyArrayObject *opt_f = (PyArrayObject *) Popt_f;
-
 	double *dx = (double *) PyArray_DATA(x);
-	double *dopt_f = (double *) PyArray_DATA(opt_f);
 
-	nlopt_result out = nlopt_optimize(self->opt, dx, dopt_f);
-	return checkNlopt(out);
+	const nlopt_result out = nlopt_optimize(self->opt, dx, &opt_f);
+
+	if (out != NLOPT_SUCCESS) {
+		PyErr_Format(PyExc_RuntimeError,
+		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
+		             __FILE__, __LINE__, __FUNCTION__, out, NLOPT_SUCCESS);
+		return NULL;
+	}
+
+	return Py_BuildValue("f", opt_f);
 }
 
 // Functions for the callback
@@ -239,7 +236,7 @@ double exec_callback(unsigned n, const double *x,
 	Py_DECREF(Ograd);
     Py_DECREF(Ox);
 
-    return PyFloat_AsDouble(result);;
+    return PyFloat_AsDouble(result);
 }
 
 // This sets the global callback object.
@@ -261,7 +258,7 @@ static PyObject *Nlopt_set_callback(Nlopt *self, PyObject *arg)
 	Py_INCREF(Py_None);
 	result = Py_None;
 
-	nlopt_result out = nlopt_set_min_objective(self->opt, exec_callback, NULL);
+	const nlopt_result out = nlopt_set_min_objective(self->opt, exec_callback, NULL);
 
 	if (out != NLOPT_SUCCESS) {
 		PyErr_Format(PyExc_RuntimeError,

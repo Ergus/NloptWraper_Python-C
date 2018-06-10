@@ -32,6 +32,10 @@ add_library(wnlopt MODULE wrapper.c)
 set_target_properties(wnlopt PROPERTIES PREFIX "")
 target_link_libraries(wnlopt nlopt ${PYTHON_LIBRARIES})
 
+# C benchmark
+add_executable(fit_main fit_main.c)
+target_link_libraries(fit_main nlopt)
+
 # Python script
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fit_main.py
   ${CMAKE_CURRENT_BINARY_DIR}/fit_main.py)
