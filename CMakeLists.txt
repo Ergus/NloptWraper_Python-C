@@ -3,6 +3,10 @@ cmake_minimum_required (VERSION 2.8.11)
 
 project(test_nlopt)
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # NLOPT options
@@ -27,6 +31,10 @@ link_directories(${CMAKE_CURRENT_BINARY_DIR}/nlopt)
 add_library(wnlopt MODULE wrapper.c)
 set_target_properties(wnlopt PROPERTIES PREFIX "")
 target_link_libraries(wnlopt nlopt ${PYTHON_LIBRARIES})
+
+# C benchmark
+add_executable(fit_main fit_main.c)
+target_link_libraries(fit_main nlopt)
 
 # Python script
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fit_main.py

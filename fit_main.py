@@ -13,7 +13,7 @@ maxeval = 100
 minrms = 0.01
 tol = 0.0001
 param_values = np.array([0, 0], dtype=np.float64)
-minf = np.array([], dtype=np.float64)
+minf = 0.0
 
 ################################################################
 # NLopt SWIG-Python wrapper
@@ -42,5 +42,5 @@ opt.set_callback(opt_me)
 opt.set_maxeval(maxeval)
 opt.set_stopval(minrms)
 opt.set_ftol_abs(tol)
-opt.optimize(param_values, minf)
-
+minf = opt.optimize(param_values, 0.0)
+print(minf)
