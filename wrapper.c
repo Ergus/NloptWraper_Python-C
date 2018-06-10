@@ -25,7 +25,7 @@ typedef struct {
 static PyObject *_checkNlopt(int out, const char file[],
                              int line, const char function[])
 {
-	if (out != NLOPT_SUCCESS) {
+	if (out > 0) {
 		PyErr_Format(PyExc_RuntimeError,
 		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
 		             file, line, function, out, NLOPT_SUCCESS);
@@ -197,6 +197,14 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 	return Py_BuildValue("f", opt_f);
 }
 
+static PyObject *Nlopt_set_local_optimizer(Nlopt *self, PyObject *arg)
+{
+	Nlopt *local_opt = (Nlopt *) arg;
+
+	const nlopt_result out = nlopt_set_local_optimizer(self->opt, local_opt->opt);
+	return checkNlopt(out);
+}
+
 // Functions for the callback
 double exec_callback(unsigned n, const double *x,
                      double *grad, void *func_data)
@@ -285,6 +293,8 @@ static PyMethodDef Nlopt_methods[] = {
 	 METH_O, "Set lower bounds."},
 	{"set_upper_bounds", (PyCFunction) Nlopt_set_upper_bounds,
 	 METH_O, "Set upper bounds."},
+	{"set_local_optimizer", (PyCFunction) Nlopt_set_local_optimizer,
+	 METH_O, "Set local optimizer."},
 	{"set_maxeval", (PyCFunction) Nlopt_set_maxeval,
 	 METH_O, "Set maxeval."},
 	{"set_stopval", (PyCFunction) Nlopt_set_stopval,

@@ -34,6 +34,7 @@ if swig:
 else: 
    # C API wrapper
    opt = wnlopt.PyNlopt(27, 2)
+   opt.set_local_optimizer(wnlopt.PyNlopt(43, 2))
    opt.set_lower_bounds(np.array([-5, -5], dtype=np.float64))
    opt.set_upper_bounds(np.array([5, 5], dtype=np.float64))
    opt.set_callback(opt_me)
