@@ -11,7 +11,7 @@ def opt_me(x, grad):
 
 # Set variables
 
-swig = True
+swig = False
 maxeval = 100
 minrms = 0.01
 tol = 0.0001
@@ -19,27 +19,27 @@ param_values = np.array([0, 0], dtype=np.float64)
 minf = 0.0
 
 if swig:  
-   # NLopt SWIG-Python wrapper
-   opt = nlopt.opt(nlopt.G_MLSL_LDS, 2)
-   opt.set_local_optimizer(nlopt.opt(nlopt.LN_BOBYQA, 2))
-   opt.set_lower_bounds(np.array([-5, -5]))
-   opt.set_upper_bounds(np.array([5, 5]))
-   opt.set_min_objective(opt_me)
-   opt.set_maxeval(maxeval)
-   opt.set_stopval(minrms) 
-   opt.set_ftol_abs(tol)
-   x = opt.optimize(param_values)
-   minf = opt.last_optimum_value()
-   print(x, minf)
+    # NLopt SWIG-Python wrapper
+    opt = nlopt.opt(nlopt.G_MLSL_LDS, 2)
+    opt.set_local_optimizer(nlopt.opt(nlopt.LN_BOBYQA, 2))
+    opt.set_lower_bounds(np.array([-5, -5]))
+    opt.set_upper_bounds(np.array([5, 5]))
+    opt.set_min_objective(opt_me)
+    opt.set_maxeval(maxeval)
+    opt.set_stopval(minrms) 
+    opt.set_ftol_abs(tol)
+    x = opt.optimize(param_values)
+    minf = opt.last_optimum_value()
+    print(x, minf)
 else: 
-   # C API wrapper
-   opt = wnlopt.PyNlopt(27, 2)
-   opt.set_local_optimizer(wnlopt.PyNlopt(43, 2))
-   opt.set_lower_bounds(np.array([-5, -5], dtype=np.float64))
-   opt.set_upper_bounds(np.array([5, 5], dtype=np.float64))
-   opt.set_callback(opt_me)
-   opt.set_maxeval(maxeval)
-   opt.set_stopval(minrms)
-   opt.set_ftol_abs(tol)
-   minf = opt.optimize(param_values, 0.0)
-   print(minf)
+    # C API wrapper
+    opt = wnlopt.PyNlopt(29, 2)
+    opt.set_local_optimizer(wnlopt.PyNlopt(34, 2))
+    opt.set_lower_bounds(np.array([-5, -5], dtype=np.float64))
+    opt.set_upper_bounds(np.array([5, 5], dtype=np.float64))
+    opt.set_callback(opt_me)
+    opt.set_maxeval(maxeval)
+    opt.set_stopval(minrms)
+    opt.set_ftol_abs(tol)
+    minf = opt.optimize(param_values, 0.0)
+    print(param_values, minf)

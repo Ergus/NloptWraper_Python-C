@@ -28,7 +28,7 @@ int main() {
 
 	//nlopt_opt opt = nlopt_create(NLOPT_G_MLSL_LDS, 2);
 	nlopt_opt opt = nlopt_create(29, 2);
-        nlopt_set_local_optimizer(opt, nlopt_create(NLOPT_LN_BOBYQA, 2));
+	nlopt_set_local_optimizer(opt, nlopt_create(NLOPT_LN_BOBYQA, 2));
 
 	nlopt_set_lower_bounds(opt, lower);
 	nlopt_set_upper_bounds(opt, upper);
@@ -37,13 +37,12 @@ int main() {
 	nlopt_set_maxeval(opt, maxeval);
 	nlopt_set_stopval(opt, minrms);
 	nlopt_set_ftol_abs(opt, tol);
-	
-	if (nlopt_optimize(opt, param_values, &minf) < 0) {
-           printf("NLopt failed!\n");
-        }
-        else {
-           printf("Found minimum at f(%g,%g) = %0.10g\n", param_values[0], param_values[1], minf);
-        }
+
+	if (nlopt_optimize(opt, param_values, &minf) < 0)
+		printf("NLopt failed!\n");
+	else
+		printf("Found minimum at f(%g,%g) = %0.10g\n",
+		       param_values[0], param_values[1], minf);
 
 	nlopt_destroy(opt);
 

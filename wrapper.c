@@ -25,7 +25,7 @@ typedef struct {
 static PyObject *_checkNlopt(int out, const char file[],
                              int line, const char function[])
 {
-	if (out > 0) {
+	if (out < 0) {
 		PyErr_Format(PyExc_RuntimeError,
 		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
 		             file, line, function, out, NLOPT_SUCCESS);
@@ -187,7 +187,7 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 
 	const nlopt_result out = nlopt_optimize(self->opt, dx, &opt_f);
 
-	if (out != NLOPT_SUCCESS) {
+	if (out < 0) {
 		PyErr_Format(PyExc_RuntimeError,
 		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
 		             __FILE__, __LINE__, __FUNCTION__, out, NLOPT_SUCCESS);
@@ -199,6 +199,13 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 
 static PyObject *Nlopt_set_local_optimizer(Nlopt *self, PyObject *arg)
 {
+	if (!arg) {
+		PyErr_Format(PyExc_RuntimeError,
+		             "%s:%d %s -> Input opt is null\n",
+		             __FILE__, __LINE__, __FUNCTION__);
+		return NULL;
+	}
+
 	Nlopt *local_opt = (Nlopt *) arg;
 
 	const nlopt_result out = nlopt_set_local_optimizer(self->opt, local_opt->opt);
