@@ -18,8 +18,7 @@ print(wnlopt.NLOPT_G_MLSL_LDS, wnlopt.NLOPT_LN_BOBYQA)
 
 # C API wrapper
 opt = wnlopt.PyNlopt(wnlopt.NLOPT_G_MLSL_LDS, 2)
-lopt = wnlopt.PyNlopt(wnlopt.NLOPT_LN_BOBYQA, 2)
-opt.set_local_optimizer(lopt)
+opt.set_local_optimizer(wnlopt.PyNlopt(wnlopt.NLOPT_LN_BOBYQA, 2))
 
 opt.set_lower_bounds(np.array([-5, -5], dtype=np.float64))
 opt.set_upper_bounds(np.array([5, 5], dtype=np.float64))

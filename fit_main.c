@@ -23,7 +23,7 @@ double opt_me(int n, const double *x, double *grad, void *func_data)
 
 int main() {
 
-	const int n = 2;
+	const int dim = 2;
 	int maxeval = 1000;
 	double minrms = 0.01;
 	double tol = 0.0001;
@@ -35,9 +35,8 @@ int main() {
 
 	printf("%d %d\n", NLOPT_G_MLSL_LDS, NLOPT_LN_BOBYQA);
 
-	nlopt_opt opt = nlopt_create(NLOPT_G_MLSL_LDS, n);
-	nlopt_opt lopt = nlopt_create(NLOPT_LN_BOBYQA, n);
-	nlopt_set_local_optimizer(opt, lopt);
+	nlopt_opt opt = nlopt_create(NLOPT_G_MLSL_LDS, dim);
+	nlopt_set_local_optimizer(opt, nlopt_create(NLOPT_LN_BOBYQA, dim));
 
 	nlopt_set_lower_bounds(opt, lower);
 	nlopt_set_upper_bounds(opt, upper);
@@ -48,7 +47,9 @@ int main() {
 	nlopt_set_ftol_abs(opt, tol);
 
 	#ifndef NDEBUG
+	const int n = nlopt_get_dimension(opt);
 	printf("Algorithm: %d\n", nlopt_get_algorithm(opt));
+	printf("Dimensions: %u\n", n);
 	double lupper[n], llower[n];
 	nlopt_get_upper_bounds(opt, lupper);
 	nlopt_get_lower_bounds(opt, llower);
