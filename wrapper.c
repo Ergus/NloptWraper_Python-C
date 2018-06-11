@@ -6,6 +6,7 @@
 #include "numpy/arrayobject.h"
 
 #include "nlopt.h"
+#include "nlopt-enum.h"
 
 // The callback will be in a global variable
 // This can be improved
@@ -25,7 +26,7 @@ typedef struct {
 static PyObject *_checkNlopt(int out, const char file[],
                              int line, const char function[])
 {
-	if (out < 0) {
+	if (out != NLOPT_SUCCESS) {
 		PyErr_Format(PyExc_RuntimeError,
 		             "%s:%d %s -> Nlopt C function returned: %d expected: %d\n",
 		             file, line, function, out, NLOPT_SUCCESS);
@@ -109,6 +110,11 @@ static PyObject *Nlopt_set_upper_bounds(Nlopt *self, PyObject *arg)
 	#endif
 
 	PyArrayObject *array = (PyArrayObject *) arg;
+	if (!array) {
+		PyErr_Format(PyExc_TypeError, "%s:%d %s -> Is not an array",
+		             __FILE__, __LINE__, __FUNCTION__);
+		return NULL;
+	}
 
 	const double *data = (double *) PyArray_DATA(array);
 	const nlopt_result out = nlopt_set_upper_bounds(self->opt, data);
@@ -185,6 +191,18 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 	PyArrayObject *x = (PyArrayObject *) Px;
 	double *dx = (double *) PyArray_DATA(x);
 
+	#ifndef NDEBUG
+	printf("Algorithm: %d\n", nlopt_get_algorithm(self->opt));
+	double upper[self->n], lower[self->n];
+	nlopt_get_upper_bounds(self->opt, upper);
+	nlopt_get_lower_bounds(self->opt, lower);
+	printf("Upper [%lf; %lf]\n", upper[0], upper[1]);
+	printf("Lower [%lf; %lf]\n", lower[0], lower[1]);
+	printf("Maxeval %d\n", nlopt_get_maxeval(self->opt));
+	printf("Stopval %lf\n", nlopt_get_stopval(self->opt));
+	printf("Ftol_abs %lf\n", nlopt_get_ftol_abs(self->opt));
+	#endif
+
 	const nlopt_result out = nlopt_optimize(self->opt, dx, &opt_f);
 
 	if (out < 0) {
@@ -196,6 +214,7 @@ static PyObject *Nlopt_optimize(Nlopt *self, PyObject *args, PyObject *kwds)
 
 	return Py_BuildValue("f", opt_f);
 }
+
 
 static PyObject *Nlopt_set_local_optimizer(Nlopt *self, PyObject *arg)
 {
@@ -211,6 +230,7 @@ static PyObject *Nlopt_set_local_optimizer(Nlopt *self, PyObject *arg)
 	const nlopt_result out = nlopt_set_local_optimizer(self->opt, local_opt->opt);
 	return checkNlopt(out);
 }
+
 
 // Functions for the callback
 double exec_callback(unsigned n, const double *x,
@@ -251,7 +271,13 @@ double exec_callback(unsigned n, const double *x,
 	Py_DECREF(Ograd);
     Py_DECREF(Ox);
 
-    return PyFloat_AsDouble(result);
+    const double ret = PyFloat_AsDouble(result);
+
+    #ifndef NDEBUG
+	printf("f(%lf, %lf) = %lf\n", x[0], x[1], ret);
+	#endif
+
+    return ret;
 }
 
 // This sets the global callback object.
@@ -312,7 +338,7 @@ static PyMethodDef Nlopt_methods[] = {
 	 METH_KEYWORDS | METH_VARARGS, "Execute Optimization."},
 	{"set_callback", (PyCFunction) Nlopt_set_callback,
 	 METH_O, "Sets the callback for the min_objective."},
-    {NULL}
+	{NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 // This is the python object design to put all together.
@@ -345,20 +371,22 @@ PyMODINIT_FUNC PyInit_wnlopt(void)
 	#endif
 
 	// Tests the object type 
-    if (PyType_Ready(&PyNloptType) < 0)
-        return NULL;
+	if (PyType_Ready(&PyNloptType) < 0)
+		return NULL;
 
-    // Creates the module object
-    PyObject *m = PyModule_Create(&nloptmodule);
-    if (!m)
-	    return NULL;
+	// Creates the module object
+	PyObject *m = PyModule_Create(&nloptmodule);
+	if (!m)
+		return NULL;
 
-    import_array();             // needed to use numpy
+	import_array();             // needed to use numpy
 
-    Py_INCREF(&PyNloptType);
+	Py_INCREF(&PyNloptType);
 
-    // Add the python object to this module.
+	// Add the python object to this module.
 	PyModule_AddObject(m, "PyNlopt" , (PyObject* )&PyNloptType);
 
-    return m;
+	ADDVALUES(m);
+
+	return m;
 }
