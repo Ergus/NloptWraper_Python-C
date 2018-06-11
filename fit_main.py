@@ -31,18 +31,3 @@ opt.set_ftol_abs(tol)
 minf = opt.optimize(param_values, 0.0)
 print("minimum: f(%lf, %lf) = %lf" %
       (param_values[0], param_values[1], minf))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
