@@ -1,3 +1,19 @@
+#
+# This file is part of the NloptWraper_Python-C distribution Copyright (c) 2017
+# Jimmy Aguilar Mena.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 cmake_minimum_required (VERSION 2.8.11)
 
@@ -8,6 +24,8 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+set(CMAKE_C_FLAGS_DEBUG "-g -pg -no-pie") 
 
 # NLOPT options
 set(NLOPT_CXX OFF CACHE BOOL "enable cxx routines")
